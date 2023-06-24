@@ -24,6 +24,8 @@ public class ImageToSound : MonoBehaviour
     private bool playTog = true;
     private Color currentPlayingColor1 = new Color(1f,1f,1f,1f);
 
+    private int lastPlayedPixelIndex = 0;
+
     private float baseF = 108f;
 
     private Texture2D textureD1;
@@ -110,7 +112,7 @@ public class ImageToSound : MonoBehaviour
         if (playStay != null)
         {
             playStay.onValueChanged.AddListener(togglePlay);
-            togglePlay(playStay.isOn);
+            // togglePlay(playStay.isOn);
         }
     }
 
@@ -156,15 +158,15 @@ public class ImageToSound : MonoBehaviour
         // playTog = !playTog;
         if (isOn)
         {
-            duration1 = Mathf.Lerp(1f, 0.005f, speedSlider.value);
-            delayBetweenPixels1 = Mathf.Lerp(.5f, 0.05f, speedSlider.value);
+            duration1 = Mathf.Lerp(.8f, 0.01f, speedSlider.value);
+            delayBetweenPixels1 = Mathf.Lerp(.1f, 0.001f, speedSlider.value);
             playTog = true;
         }
         else if (!isOn)
         {
             // duration1 = 3000;
             // delayBetweenPixels1 = 3000;
-            // playTog = false;
+            playTog = false;
         }
     }
 
@@ -223,10 +225,16 @@ public class ImageToSound : MonoBehaviour
     }
 
 
+    ////////////////////////////// Get stop/go code working (need two separate PlayImageSound() methods toggled by playStay toggle)
+    ////////////////////////////// Connect pixel select by touch, show pixel with pixel selector/marker
+    ////////////////////////////// Loop/record/save
+    ////////////////////////////// refine, refine, refine!!
+    ////////////////////////////// what sliders could be turned into knobs like my spacetime sliderknobs?? volume? saturation?
+    /////////////////////////////// HOW TO SHARE?   share image with soundcreation? Facebook, email, etc?
+
+
     IEnumerator PlayImageSound(Color32[] pixels)
     {
-        AudioSource audioSource = GetComponent<AudioSource>();
-
         for (int i = 0; i < pixels.Length; i++)
         {
             if (!toggle1.isOn)
@@ -234,115 +242,39 @@ public class ImageToSound : MonoBehaviour
                 yield break;
             }
 
-            // if (!playStay.isOn)
-            // {
-            //     yield break;
-            // }
-
             Color32 pixelColor1 = pixels[i];
             
-            if (pixelColor1.a != 0 && 3< (pixelColor1.r + pixelColor1.g + pixelColor1.b))
+            if (pixelColor1.a != 0 && 80 < (pixelColor1.r + pixelColor1.g + pixelColor1.b))
             {
                 currentPlayingColor1 = pixelColor1;
 
-                // Debug.Log($"Pixel {i}: ({pixelColor1.r}, {pixelColor1.g}, {pixelColor1.b}, {pixelColor1.a})");
                 AudioClip audioClip = MakeAudioClipFromPixel(currentPlayingColor1, i);
+                AudioSource audioSource = gameObject.AddComponent<AudioSource>(); // create a new AudioSource for each pixel
                 audioSource.clip = audioClip;
-                // audioSource.volume = .3f*(pixelColor1.r + pixelColor1.g + pixelColor1.b) / (3f); // Adjust the volume based on color intensity
                 audioSource.volume = volumeSlider.value;    
                 echoFilter.delay = Mathf.Lerp(0f, 4000f, echoSlider.value);
                 echoFilter.decayRatio = echoSlider.value;            
                 audioSource.Play();
+                lastPlayedPixelIndex = i;
 
-                // Wait for the sound to finish before moving to the next pixel
-                while (audioSource.isPlaying)
-                {
-                    yield return null;
-                }
+                StartCoroutine(DestroyAudioSourceWhenFinished(audioSource)); // destroy the AudioSource when it's done playing
             }
-            // Optional delay between sounds can be added here
+
             yield return new WaitForSeconds(delayBetweenPixels1/2);
         }
     }
 
-    // IEnumerator PlayImageSound(Color32[] pixels)
-    // {
-    //     AudioSource audioSource = GetComponent<AudioSource>();
-    //     float fadeLength = 0.1f; // Length of the fade in/out in seconds
-    //     int fadeSamples = (int)(fadeLength * sampleRate); // Length of the fade in/out in samples
-    //     float fadeTime = (float)fadeSamples / sampleRate; // Length of the fade in/out in time units
+    IEnumerator DestroyAudioSourceWhenFinished(AudioSource audioSource)
+    {
+        while (audioSource.isPlaying)
+        {
+            yield return null;
+        }
 
-    //     for (int i = 0; i < pixels.Length; i++)
-    //     {
-    //         if (!toggle1.isOn)
-    //         {
-    //             yield break;
-    //         }
+        Destroy(audioSource);
+    }
 
-    //         Color32 pixelColor1 = pixels[i];
-            
-    //         if (pixelColor1.a != 0 && 3< (pixelColor1.r + pixelColor1.g + pixelColor1.b))
-    //         {
-    //             currentPlayingColor1 = pixelColor1;
 
-    //             AudioClip audioClip = MakeAudioClipFromPixel(currentPlayingColor1, i);
-    //             audioSource.clip = audioClip;
-    //             audioSource.volume = volumeSlider.value;    
-    //             echoFilter.delay = Mathf.Lerp(0f, 4000f, echoSlider.value);
-    //             echoFilter.decayRatio = echoSlider.value;      
-
-    //             int sampleCount = (int)(duration1 * sampleRate);
-    //             float frequencyIncrement = frequency / sampleRate;
-    //             float[] buffer = new float[sampleCount];
-    //             for (int k = 0; k < sampleCount; k++)
-    //             {
-    //                 float time = (float)k / sampleRate; // Current time in seconds
-    //                 float angle = 2 * Mathf.PI * frequency * time; // Angle of the wave
-    //                 float sample = Mathf.Sin(angle); // Value of the wave at this point
-    //                 buffer[k] = sample;
-    //             }
-
-    //             // Fade in and out
-    //             int fadeSamples = 4410; // Length of the fade in samples. Change this to adjust the length of the fade.
-    //             for (int k = 0; k < fadeSamples; k++)
-    //             {
-    //                 float fadeFactor = (float)k / fadeSamples;
-    //                 buffer[k] *= fadeFactor; // Fade in
-    //                 buffer[buffer.Length - 1 - k] *= fadeFactor; // Fade out
-    //             }
-
-    //             // Ensure the waveform starts and ends at a zero-crossing
-    //             int zeroCrossingIndex = 0;
-    //             for (int k = 1; k < buffer.Length; k++)
-    //             {
-    //                 if (buffer[k - 1] >= 0 && buffer[k] < 0) // Found a zero-crossing
-    //                 {
-    //                     zeroCrossingIndex = k;
-    //                     break;
-    //                 }
-    //             }
-    //             // Shift the buffer so it starts at the first zero-crossing
-    //             float[] shiftedBuffer = new float[buffer.Length];
-    //             Array.Copy(buffer, zeroCrossingIndex, shiftedBuffer, 0, buffer.Length - zeroCrossingIndex);
-    //             Array.Copy(buffer, 0, shiftedBuffer, buffer.Length - zeroCrossingIndex, zeroCrossingIndex);
-
-    //             // Create the audio clip and play it
-    //             AudioClip audioClip = AudioClip.Create("MySound", shiftedBuffer.Length, 1, sampleRate, false);
-    //             audioClip.SetData(shiftedBuffer, 0);
-    //             audioSource.clip = audioClip;
-    //             audioSource.Play();
-        
-    //             // audioSource.Play();
-
-    //             // Wait for the sound to finish before moving to the next pixel, minus the fade out time
-    //             float waitTime = audioClip.length - fadeTime;
-    //             yield return new WaitForSeconds(waitTime);
-    //         }
-
-    //         // Optional delay between sounds can be added here
-    //         yield return new WaitForSeconds(delayBetweenPixels1/2);
-    //     }
-    // }
 
 
 
@@ -408,7 +340,7 @@ public class ImageToSound : MonoBehaviour
             
 
             // Apply a fade in/out
-            float fadeLength = 0.003f; // Length of the fade in seconds
+            float fadeLength = 0.001f; // Length of the fade in seconds
             int fadeSamples = (int)(fadeLength * sampleRate); // Length of the fade in samples
             if (k < fadeSamples) // If we're in the fade in
             {
@@ -422,7 +354,7 @@ public class ImageToSound : MonoBehaviour
             
             // samples[k] = sample1 * ((pixelColor1.r + pixelColor1.g + pixelColor1.b) / (3f)); // Adjust the volume of the sample based on color intensity
             // samples[k] = sample1;
-            samples[k] = 0.618f*sample1 * (pixelColor1.r + pixelColor1.g + pixelColor1.b) ;
+            samples[k] = 0.8f*sample1 * (pixelColor1.r + pixelColor1.g + pixelColor1.b) ;
         }
 
         AudioClip audioClip = AudioClip.Create("PixelSound", samples.Length, 1, sampleRate, false);
