@@ -6,13 +6,14 @@ public class ImageSaturationController : MonoBehaviour
 {
     public RawImage targetImage;
     public Material saturationMaterial;
+    // public Slider saturationSlider;
     // public ImageToSound imageToSoundScript;
+    private Slider saturationSlider;
 
-    private Slider slider;
 
-    private void Awake()
+    public void Start()
     {
-        slider = GetComponent<Slider>();
+        saturationSlider = GetComponent<Slider>();
         targetImage.material = saturationMaterial;
     }
 
@@ -20,7 +21,7 @@ public class ImageSaturationController : MonoBehaviour
 
     private void Update()
     {
-        targetImage.material.SetFloat("_Saturation", slider.value);
+        targetImage.material.SetFloat("_Saturation", saturationSlider.value);
         // imageToSoundScript.UpdateTexture();
     }
 }
