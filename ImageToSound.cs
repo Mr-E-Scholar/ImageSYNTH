@@ -11,8 +11,8 @@ public class ImageToSound : MonoBehaviour
 {
     public RawImage uiImage1; // Assign your UI Image in the Unity Inspector
     public int sampleRate = 44100; // Standard audio sample rate
-    private float duration1 = 0.1f; // Duration for each sound
-    private float delayBetweenPixels1 = 0.1f; // Delay between each pixel's sound
+    private float duration1; // Duration for each sound
+    private float delayBetweenPixels1;// Delay between each pixel's sound
     public Slider speedSlider;
     public Slider sliderPitch;
     public Slider waveformSlider;
@@ -20,9 +20,18 @@ public class ImageToSound : MonoBehaviour
     public Slider volumeSlider;
     public Toggle toggle1;
     public Image pixel1;
-    public Toggle playStay;
+    public Button playStay;
     private bool playTog = true;
+    private bool powerTog = false;
     private Color currentPlayingColor1 = new Color(1f,1f,1f,1f);
+    private int sampleCount;
+    private float[] samples;
+    private AudioSource audioSource;
+
+    public Sprite playSprite;
+    public Sprite stopSprite;
+
+    public Button imageLoad;
 
     private int lastPlayedPixelIndex = 0;
 
@@ -37,7 +46,7 @@ public class ImageToSound : MonoBehaviour
     public Slider echoSlider;
     private AudioEchoFilter echoFilter;
 
-    public Slider distortionSlider;
+
     private AudioDistortionFilter distortionFilter;
 
     public Slider chorusSlider;
@@ -50,13 +59,14 @@ public class ImageToSound : MonoBehaviour
 
     public void Start()
     {
+        AudioSource audioSource = gameObject.AddComponent<AudioSource>();
         if (echoSlider != null)
         {
-            echoFilter = gameObject.AddComponent<AudioEchoFilter>();   
+            echoFilter = audioSource.gameObject.AddComponent<AudioEchoFilter>();   
             echoFilter.enabled = true;
             echoSlider.onValueChanged.AddListener(UpdateEcho);
-            echoFilter.delay = 0;
-            echoFilter.decayRatio = 0;
+            echoFilter.delay = 0f;
+            echoFilter.decayRatio = 0f;
             // UpdateEcho(echoSlider.value);
         }
 
@@ -69,16 +79,13 @@ public class ImageToSound : MonoBehaviour
             reverbFilter.reflectionsLevel = 0;
         }
 
-        if (distortionSlider != null)
-        {
-            distortionFilter = gameObject.AddComponent<AudioDistortionFilter>();
-            distortionFilter.enabled = true;
-            distortionFilter.distortionLevel = 0;
-        }
 
         if (waveformSlider != null)
         {
             waveformSlider.onValueChanged.AddListener(UpdateWaveform);
+            distortionFilter = gameObject.AddComponent<AudioDistortionFilter>();
+            distortionFilter.enabled = true;
+            distortionFilter.distortionLevel = 0;
             UpdateWaveform(waveformSlider.value);
         }
 
@@ -111,7 +118,7 @@ public class ImageToSound : MonoBehaviour
 
         if (playStay != null)
         {
-            playStay.onValueChanged.AddListener(togglePlay);
+            playStay.onClick.AddListener(togglePlay);
             // togglePlay(playStay.isOn);
         }
     }
@@ -120,10 +127,10 @@ public class ImageToSound : MonoBehaviour
     {
         if (playTog)
         {
-            duration1 = Mathf.Lerp(1f, 0.005f, value);
-            delayBetweenPixels1 = Mathf.Lerp(.5f, 0.05f, value);
+            duration1 = Mathf.Lerp(3f, 0.01f, value);
+            delayBetweenPixels1 = Mathf.Lerp(.01f, 0.001f, value);
         }
-        else
+        if (!playTog)
         {
             duration1 = 3000;
             delayBetweenPixels1 = 3000;
@@ -133,7 +140,7 @@ public class ImageToSound : MonoBehaviour
 
     private void UpdatePitch(float value)
     {
-        baseF = Mathf.Lerp(108f, 936f, value);
+        baseF = Mathf.Lerp(88f, 1008f, value);
     }
 
     private void UpdateWaveform(float value)
@@ -143,7 +150,11 @@ public class ImageToSound : MonoBehaviour
 
     private void UpdateEcho(float value)
     {
-        echoFilter.delay = Mathf.Lerp(0f, 4000f, value);
+        if (!echoFilter.enabled)
+        {
+            echoFilter.enabled = true;
+        }
+        echoFilter.delay = Mathf.Lerp(0f, 6000f, value);
         echoFilter.decayRatio = value;
     }
 
@@ -153,50 +164,110 @@ public class ImageToSound : MonoBehaviour
         chorusFilter.depth = value/3;
     }
 
-    public void togglePlay(bool isOn)
+    
+
+    public void togglePlay()
     {
-        // playTog = !playTog;
-        if (isOn)
+        playTog=!playTog;
+
+        if (playTog)
         {
-            duration1 = Mathf.Lerp(.8f, 0.01f, speedSlider.value);
-            delayBetweenPixels1 = Mathf.Lerp(.1f, 0.001f, speedSlider.value);
-            playTog = true;
+            // ColorBlock colorVar = playStay.colors;
+            // colorVar.normalColor = Color.green;
+            // playStay.colors = colorVar;
+            playStay.GetComponent<Image>().color = Color.green;
+            playStay.GetComponent<Image>().sprite = playSprite;
+
         }
-        else if (!isOn)
+        else
         {
-            // duration1 = 3000;
-            // delayBetweenPixels1 = 3000;
-            playTog = false;
+            // ColorBlock colorVar = playStay.colors;
+            // colorVar.normalColor = Color.red;
+            // playStay.colors = colorVar;
+            playStay.GetComponent<Image>().color = Color.red;
+            playStay.GetComponent<Image>().sprite = stopSprite;
         }
     }
+    
 
 ///////////////////////////////////////// HOW TO STOP THE FOR LOOP? PUT A CHECK ON PLAYTOG. BREAK IF !PLAYTOG
 
-    void Update()
+    public void Update()
     {
         // Update the UI image color with the currently playing color
         pixel1.color = currentPlayingColor1;
-        // echoFilter.delay = Mathf.Lerp(0f, 4000f, echoSlider.value);
+        // echoFilter.delay = Mathf.Lerp(0f, 2000f, echoSlider.value);
         // echoFilter.decayRatio = echoSlider.value;
-        UpdateEcho(echoSlider.value);
+        // duration1 = Mathf.Lerp(2f, 0.05f, speedSlider.value);
+        // delayBetweenPixels1 = Mathf.Lerp(.1f, 0.001f, speedSlider.value);
+        // UpdateEcho(echoSlider.value);
         reverbFilter.reverbLevel = Mathf.Lerp(0f, 1000f, reverbSlider.value);
         reverbFilter.reverbDelay = reverbSlider.value/10;
         reverbFilter.reflectionsLevel = Mathf.Lerp(0f, 100f, reverbSlider.value);
-        distortionFilter.distortionLevel = distortionSlider.value;
-        // chorusFilter.rate = Mathf.Lerp(0f, 20f, chorusSlider.value);
+        distortionFilter.distortionLevel = .9f*waveformSlider.value;
+
+        // if (toggle)
+        // {
+        //     // Code for playing a single pixel when the user touches
+        //     if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began)
+        //     {
+        //         Vector2 touchPosition = Camera.main.ScreenToWorldPoint(Input.GetTouch(0).position);
+        //         Color color = GetPixelColorAtWorldPosition(touchPosition);
+        //         PlaySoundFromColor(color);
+        //     }
+        // }
+        // else
+        // {
+        //     // Your existing code for looping through the pixels goes here
+        // }
+        
         
     }
+
 
     void OnToggleChanged(bool isOn)
     {
         if (isOn)
         {
-            textureD1 = TextureToTexture2D(uiImage1.texture);
-            Color32[] pixels = textureD1.GetPixels32();
-            StartPlayingSounds(pixels);
+            playStay.interactable = false;
+            imageLoad.interactable = false;
+            // playStay.onValueChanged.RemoveListener(togglePlay);
+            if (playTog)
+            {
+                textureD1 = TextureToTexture2D(uiImage1.texture);
+                Color32[] allPixels = textureD1.GetPixels32();
+
+                // Filter out pixels that do not meet the requirement
+                List<Color32> filteredPixels = new List<Color32>();
+                for (int i = 0; i < allPixels.Length; i++)
+                {
+                    if (80 < (allPixels[i].r + allPixels[i].g + allPixels[i].b))
+                    {
+                        filteredPixels.Add(allPixels[i]);
+                    }
+                }
+
+                // Convert the List of filtered pixels back to an array
+                Color32[] filteredPixelArray = filteredPixels.ToArray();
+
+                StartPlayingSoundsPLAY(filteredPixelArray);
+                // StartPlayingSounds(pixels);
+            }
+            else
+            {
+                
+                textureD1 = TextureToTexture2D(uiImage1.texture);
+                Color32[] pixels = textureD1.GetPixels32();
+                StartPlayingSoundsSTAY(pixels);
+                
+            }
+            
         }
         else
         {
+            playStay.interactable = true;
+            imageLoad.interactable = true;
+            
             StopAllCoroutines();
         }
     }
@@ -219,50 +290,58 @@ public class ImageToSound : MonoBehaviour
         return texture2D;
     }
 
-    void StartPlayingSounds(Color32[] pixels)
+    void StartPlayingSoundsPLAY(Color32[] pixels)
     {
         StartCoroutine(PlayImageSound(pixels));
     }
 
+    void StartPlayingSoundsSTAY(Color32[] pixels)
+    {
+        StartCoroutine(PlaySinglePixelSound(pixels[1423]));
+    }
 
-    ////////////////////////////// Get stop/go code working (need two separate PlayImageSound() methods toggled by playStay toggle)
+
+    ////////////////////////////// Get touch-pixel working!!!
     ////////////////////////////// Connect pixel select by touch, show pixel with pixel selector/marker
     ////////////////////////////// Loop/record/save
     ////////////////////////////// refine, refine, refine!!
-    ////////////////////////////// what sliders could be turned into knobs like my spacetime sliderknobs?? volume? saturation?
+    ////////////////////////////// what sliders could be turned into knobs like my spacetime sliderknobs?? volume? saturation? (Turn speed into BPM knob!!!!!)
+    ///////////////////////////////  REMOVE DISTORTION SLIDER AND TURN THAT INTO A KNOB/TOGGLE FOR SELECTING THE SCALE STRUCTURE (PENTATONIC, OCTAVE, ETC)
     /////////////////////////////// HOW TO SHARE?   share image with soundcreation? Facebook, email, etc?
-
 
     IEnumerator PlayImageSound(Color32[] pixels)
     {
         for (int i = 0; i < pixels.Length; i++)
         {
-            if (!toggle1.isOn)
-            {
-                yield break;
-            }
-
-            Color32 pixelColor1 = pixels[i];
             
+            Color32 pixelColor1 = pixels[i];
             if (pixelColor1.a != 0 && 80 < (pixelColor1.r + pixelColor1.g + pixelColor1.b))
             {
                 currentPlayingColor1 = pixelColor1;
-
-                AudioClip audioClip = MakeAudioClipFromPixel(currentPlayingColor1, i);
-                AudioSource audioSource = gameObject.AddComponent<AudioSource>(); // create a new AudioSource for each pixel
+                AudioClip audioClip = MakeAudioClipFromPixel(currentPlayingColor1, i, duration1);
+                AudioSource audioSource = gameObject.AddComponent<AudioSource>();
+                echoFilter.enabled = true;
+                echoFilter.delay = Mathf.Lerp(0f, 6000f, echoSlider.value);
+                echoFilter.decayRatio = echoSlider.value;
+                
                 audioSource.clip = audioClip;
-                audioSource.volume = volumeSlider.value;    
-                echoFilter.delay = Mathf.Lerp(0f, 4000f, echoSlider.value);
-                echoFilter.decayRatio = echoSlider.value;            
+                audioSource.volume = volumeSlider.value;         
                 audioSource.Play();
                 lastPlayedPixelIndex = i;
-
-                StartCoroutine(DestroyAudioSourceWhenFinished(audioSource)); // destroy the AudioSource when it's done playing
+                StartCoroutine(DestroyAudioSourceWhenFinished(audioSource)); 
             }
 
-            yield return new WaitForSeconds(delayBetweenPixels1/2);
+            if (!playTog)
+            {
+                audioSource.Stop();
+                yield break;
+            }
+
+            yield return new WaitForSeconds(duration1/10);
         }
     }
+
+
 
     IEnumerator DestroyAudioSourceWhenFinished(AudioSource audioSource)
     {
@@ -275,6 +354,30 @@ public class ImageToSound : MonoBehaviour
     }
 
 
+    IEnumerator PlaySinglePixelSound(Color32 pixel)
+    {
+        
+
+        // if (pixel.a != 0 && 80 < (pixel.r + pixel.g + pixel.b))
+        // {
+            // AudioClip audioClip = MakeAudioClipFromPixel(pixel, 0, 30); // Assuming 0 as index, change if needed
+            // AudioSource audioSource = gameObject.AddComponent<AudioSource>(); 
+            // audioSource.clip = audioClip;
+            // audioSource.volume = volumeSlider.value;    
+            // audioSource.Play();
+
+            // Commented out as per your script above.
+            // StartCoroutine(DestroyAudioSourceWhenFinished(audioSource)); 
+            // if (!playTog && audioSource != null)
+            // {
+            //     audioSource.Stop();
+            //     yield break;
+            // }
+        // }
+        return null;
+
+        
+    }
 
 
 
@@ -282,7 +385,7 @@ public class ImageToSound : MonoBehaviour
 
 
     // COLOR TO SOUND BY RGB CHORD
-    AudioClip MakeAudioClipFromPixel(Color pixelColor1, int i)
+    AudioClip MakeAudioClipFromPixel(Color pixelColor1, int i, float duration)
     {
         AudioSource audioSource = GetComponent<AudioSource>();
         int sampleCount = (int)(sampleRate * duration1);
@@ -301,9 +404,16 @@ public class ImageToSound : MonoBehaviour
         float greenBaseFrequency = baseFrequency * pentatonicScale[greenNote];
         float blueBaseFrequency = baseFrequency * pentatonicScale[blueNote];     
 
-        float redBaseFrequencyFFTH = 3*redBaseFrequency/2; 
-        float greenBaseFrequencyFFTH = 3*greenBaseFrequency/2;
-        float blueBaseFrequencyFFTH = 3*blueBaseFrequency/2;
+        float attackTime = duration1/20; // Time in seconds for attack stage
+        float decayTime = duration1/20; // Time in seconds for decay stage
+        float sustainLevel = 0.05f; // Level for sustain stage (0.7 means 70% of max volume)
+        float releaseTime = duration1/10; // Time in seconds for release stage
+
+        // Calculate number of samples for each stage
+        int attackSamples = (int)(attackTime * sampleRate);
+        int decaySamples = (int)(decayTime * sampleRate);
+        int sustainSamples = sampleCount - attackSamples - decaySamples; // Sustain for remaining time
+        int releaseSamples = (int)(releaseTime * sampleRate);
 
 
         // Generate a chord of sound for this pixel
@@ -322,44 +432,43 @@ public class ImageToSound : MonoBehaviour
             float greenSample = Mathf.Lerp(greenBaseSample, greenSquareSample, waveformValue);
             float blueSample = Mathf.Lerp(blueBaseSample, blueSquareSample, waveformValue);
 
-            float redFFTHBaseSample = Mathf.Sin(2 * Mathf.PI * redBaseFrequencyFFTH * time);
-            float greenFFTHBaseSample = Mathf.Sin(2 * Mathf.PI * greenBaseFrequencyFFTH * time);
-            float blueFFTHBaseSample = Mathf.Sin(2 * Mathf.PI * blueBaseFrequencyFFTH * time);
-            float redFFTHSquareSample = Mathf.Sign(Mathf.Sin(2 * Mathf.PI * redBaseFrequencyFFTH * time));
-            float greenFFTHSquareSample = Mathf.Sign(Mathf.Sin(2 * Mathf.PI * greenBaseFrequencyFFTH * time));
-            float blueFFTHSquareSample = Mathf.Sign(Mathf.Sin(2 * Mathf.PI * blueBaseFrequencyFFTH * time));
-            // Interpolate between the sine wave and square wave based on the waveformValue
-            float redFFTHSample = Mathf.Lerp(redFFTHBaseSample, redFFTHSquareSample, waveformValue);
-            float greenFFTHSample = Mathf.Lerp(greenFFTHBaseSample, greenFFTHSquareSample, waveformValue);
-            float blueFFTHSample = Mathf.Lerp(blueFFTHBaseSample, blueFFTHSquareSample, waveformValue);
+
       
-            // sample1 = .167f*(redSample + redFFTHSample + greenSample + greenFFTHSample + blueSample + blueFFTHSample) / 6;
-            sample1 = .618f*(redSample + greenSample + blueSample) / 3;
+            sample1 = (redSample + greenSample + blueSample) / 3;
             
-            // Debug.Log($"The pan is set to: {audioSource.panStereo}");
-            
+            float envelope = 0.0f;
 
-            // Apply a fade in/out
-            float fadeLength = 0.001f; // Length of the fade in seconds
-            int fadeSamples = (int)(fadeLength * sampleRate); // Length of the fade in samples
-            if (k < fadeSamples) // If we're in the fade in
+            if (k < attackSamples) // If we're in the attack stage
             {
-                sample1 *= (float)k / fadeSamples; // Linear fade in
+                // Exponential ramp from 0 to 1
+                float t = (float)k / attackSamples; // Normalized time (0 to 1)
+                envelope = MathF.Exp(5.0f * (t - 1)); // Exponential curve with base e
             }
-            else if (k > sampleCount - fadeSamples) // If we're in the fade out
+            else if (k < attackSamples + decaySamples) // If we're in the decay stage
             {
-                sample1 *= (float)(sampleCount - k) / fadeSamples; // Linear fade out
+                // Exponential ramp from 1 to sustain level
+                float t = (float)(k - attackSamples) / decaySamples; // Normalized time (0 to 1)
+                envelope = 1.0f - (1.0f - sustainLevel) * MathF.Exp(5.0f * (t - 1)); // Inverted and offset exponential curve
             }
-
-            
-            // samples[k] = sample1 * ((pixelColor1.r + pixelColor1.g + pixelColor1.b) / (3f)); // Adjust the volume of the sample based on color intensity
+            else if (k < attackSamples + decaySamples + sustainSamples) // If we're in the sustain stage
+            {
+                envelope = sustainLevel; // Constant sustain level
+            }
+            else // If we're in the release stage
+            {
+                // Exponential ramp from sustain level to 0
+                float t = (float)(k - attackSamples - decaySamples - sustainSamples) / releaseSamples; // Normalized time (0 to 1)
+                envelope = sustainLevel * MathF.Exp(5.0f * (1 - t)); // Exponential curve with base e, inverted
+            }
+            samples[k] = 0.23f*sample1 * (pixelColor1.r + pixelColor1.g + pixelColor1.b) ;
             // samples[k] = sample1;
-            samples[k] = 0.8f*sample1 * (pixelColor1.r + pixelColor1.g + pixelColor1.b) ;
+            samples[k] *= envelope; // Apply envelope to sample
+
+
         }
 
         AudioClip audioClip = AudioClip.Create("PixelSound", samples.Length, 1, sampleRate, false);
         audioClip.SetData(samples, 0);
-
         return audioClip;
     }
 
@@ -367,3 +476,21 @@ public class ImageToSound : MonoBehaviour
 
 }
 
+
+
+
+// Color GetPixelColorAtWorldPosition(Vector2 worldPosition)
+// {
+//     // Translate the world position to a pixel in the image
+//     // This will depend on how your image is positioned and scaled in the world
+//     // The following is just an example and may need to be adjusted
+//     Vector2 imagePosition = worldPosition - imageBottomLeftCorner;
+//     int x = (int)(imagePosition.x / imageWidth * imagePixelsWidth);
+//     int y = (int)(imagePosition.y / imageHeight * imagePixelsHeight);
+//     return image.GetPixel(x, y);
+// }
+
+// void PlaySoundFromColor(Color color)
+// {
+//     // Your existing code for playing a sound from a color goes here
+// }
